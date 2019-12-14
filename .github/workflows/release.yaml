@@ -1,0 +1,46 @@
+name: release
+on:
+  push:
+    tags: v*
+jobs:
+  build:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12.13.1
+      - name: Setup
+        id: setup
+        run: |-
+          MOD_NAME=${FACTORIO_MOD_NAME}
+          MOD_VERSION=${GITHUB_TAG/"refs/tags/v"}
+          echo "::set-output name=mod_name::${MOD_NAME}"
+          echo "::set-output name=mod_version::${MOD_VERSION}"
+        env:
+          GITHUB_TAG: ${{ github.ref }}
+          FACTORIO_MOD_NAME: FoodSpaceModmash
+      - name: Package
+        id: packaging
+        uses: Tei1988/factorio-mod-package@master
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TAG: ${{ github.ref }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.packaging.outputs.asset_path }}
+          asset_name: ${{ steps.setup.outputs.mod_name }}_${{ steps.setup.outputs.mod_version }}.zip
+          asset_content_type: 'application/zip'
